@@ -59,7 +59,7 @@ for i, row in enumerate(rows):
 output = "\n".join([",".join(row) for row in data_rows])
 
 # Сохраняем данные в TXT-файл
-with open('climate_data.txt', 'w', encoding='utf-8') as txt_file:
+with open('files/climate_data.txt', 'w', encoding='utf-8') as txt_file:
     txt_file.write(output)
 
 print("Данные сохранены в файл 'climate_data.txt'")
