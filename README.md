@@ -2,4 +2,4 @@
 
 Демо приложения:
 
-![](files/hiqh_quality_demonstration.mp4)
+![](/files/hiqh_quality_demonstration.mp4)
