@@ -75,15 +75,43 @@ def train_model():
             Dense(1)
         ])
         model.compile(optimizer='adam', loss='mse')
-        history = model.fit(X_train, y_train, epochs=100, batch_size=16,
-                            validation_data=(X_test, y_test), verbose=0)
+
+        # Создание ProgressBar и метки прогресса
+        progress_bar = ttk.Progressbar(root, orient="horizontal", length=300, mode="determinate")
+        progress_bar.pack(pady=10)
+        progress_label = tk.Label(root, text="Прогресс: 0%")
+        progress_label.pack()
+
+        # Обучение модели с обновлением ProgressBar
+        epochs = 100
+        history = {'loss': [], 'val_loss': []}
+
+        for epoch in range(epochs):
+            history_batch = model.fit(
+                X_train, y_train, 
+                epochs=1, batch_size=16,
+                validation_data=(X_test, y_test), 
+                verbose=0
+            )
+            history['loss'].append(history_batch.history['loss'][0])
+            history['val_loss'].append(history_batch.history['val_loss'][0])
+
+            # Обновление ProgressBar
+            progress = (epoch + 1) / epochs * 100
+            progress_bar['value'] = progress
+            progress_label.config(text=f"Прогресс: {int(progress)}%")
+            root.update()
+
+        # Удаление ProgressBar после завершения
+        progress_bar.destroy()
+        progress_label.destroy()
 
         # Оценка точности модели
         test_loss = model.evaluate(X_test, y_test, verbose=0)
         messagebox.showinfo("Точность модели", f"Потери на тестовых данных: {test_loss:.4f}")
 
         # Построение графика потерь
-        plot_loss(history.history['loss'], history.history['val_loss'])
+        plot_loss(history['loss'], history['val_loss'])
 
         status_label.config(text="Обучение завершено.", fg="green")
     except Exception as e:
@@ -128,21 +156,41 @@ def predict_future():
     if model is None or time_series_df is None:
         messagebox.showerror("Ошибка", "Сначала загрузите данные и обучите/загрузите модель.")
         return
+
+    # Создание диалогового окна для выбора года
+    year = tk.simpledialog.askinteger(
+        "Выбор года", 
+        "Введите год для прогноза (2025–2030):", 
+        minvalue=2025, maxvalue=2030
+    )
+    if year is None:  # Если пользователь закрыл диалог
+        return
+
     try:
-        last_sequence = time_series_df['Значение'].values[-12:]
-        predictions_normalized = predict_future_values(model, last_sequence)
+        last_sequence = time_series_df['Значение'].values[-12:]  # Последние 12 месяцев данных
+        steps = (year - 2024) * 12  # Количество шагов для прогноза (месяцы)
+        
+        # Предсказание значений
+        predictions_normalized = predict_future_values(model, last_sequence, steps=steps)
         predictions = scaler.inverse_transform(
             np.array(predictions_normalized).reshape(-1, 1)).flatten()
 
+        # Выборка только для выбранного года
+        start_index = (year - 2025) * 12
+        end_index = start_index + 12
+        forecast_year = pd.DataFrame({
+            'Месяц': months,
+            'Прогноз': predictions[start_index:end_index]
+        })
+
         # Сохранение результата в txt файл
-        forecast_2025 = pd.DataFrame({'Месяц': months, 'Прогноз': predictions})
         file_path = filedialog.asksaveasfilename(defaultextension=".txt", filetypes=[("Text files", "*.txt")])
         if file_path:
-            forecast_2025.to_csv(file_path, sep='\t', index=False)
-            messagebox.showinfo("Успех", "Результаты успешно сохранены!")
+            forecast_year.to_csv(file_path, sep='\t', index=False)
+            messagebox.showinfo("Успех", f"Результаты для {year} года успешно сохранены!")
 
         # Построение графика прогноза
-        plot_forecast(forecast_2025)
+        plot_forecast(forecast_year, year)
     except Exception as e:
         messagebox.showerror("Ошибка", f"Не удалось выполнить предсказание: {e}")
 
@@ -177,18 +225,18 @@ def plot_loss(train_loss, val_loss):
 
 
 # Функция для построения графика прогноза
-def plot_forecast(forecast_2025):
+def plot_forecast(forecast_data, year):
     fig, ax = plt.subplots(figsize=(6, 4))
-    sns.barplot(x='Месяц', y='Прогноз', data=forecast_2025,
+    sns.barplot(x='Месяц', y='Прогноз', data=forecast_data,
                 palette='rocket', ax=ax)
-    ax.set_title('Прогноз на 2025 год', fontsize=14)
+    ax.set_title(f'Прогноз на {year} год', fontsize=14)
     ax.set_xlabel('Месяц', fontsize=12)
     ax.set_ylabel('Прогнозируемое значение', fontsize=12)
     plt.xticks(rotation=45)
 
     # Серые надписи для предсказаний
-    for index, row in forecast_2025.iterrows():
-        plt.text(index, row['Прогноз'] + 0.5, round(row['Прогноз'],2),
+    for index, row in forecast_data.iterrows():
+        plt.text(index, row['Прогноз'] + 0.5, round(row['Прогноз'], 2),
                  ha='center', fontsize=10, color='grey')
 
     canvas = FigureCanvasTkAgg(fig, master=right_frame)
