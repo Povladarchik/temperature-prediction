@@ -10,7 +10,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from sklearn.preprocessing import MinMaxScaler
 
 from keras.models import Sequential
-from keras.layers import LSTM, Dense
+from keras.layers import LSTM, Dense, LeakyReLU
 from keras.src.legacy.saving import legacy_h5_format
 
 
@@ -64,14 +64,17 @@ def train_model():
 
         time_steps = 12
         X, y = create_sequences(time_series_df['Значение'].values, time_steps)
-        split = int(len(X) * 0.85)
+        split = int(len(X) * 0.9)
         X_train, X_test = X[:split], X[split:]
         y_train, y_test = y[:split], y[split:]
         X_train = X_train.reshape((X_train.shape[0], X_train.shape[1], 1))
         X_test = X_test.reshape((X_test.shape[0], X_test.shape[1], 1))
 
         model = Sequential([
-            LSTM(50, activation='relu', input_shape=(time_steps, 1)),
+            LSTM(100, return_sequences=True, input_shape=(time_steps, 1)),
+            LeakyReLU(alpha=0.1),
+            LSTM(50, return_sequences=False),
+            LeakyReLU(alpha=0.1),
             Dense(1)
         ])
         model.compile(optimizer='adam', loss='mse')
