@@ -90,5 +90,6 @@
 
 Видео демонстрация проекта со всеми функциями:
 
-https://github.com/user-attachments/assets/cc460d6e-61d2-4deb-bcdc-650e976b5746
+https://github.com/user-attachments/assets/c16ff98c-574f-41a4-ba0c-118d35e42ade
+
 
